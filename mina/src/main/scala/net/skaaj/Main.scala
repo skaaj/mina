@@ -1,11 +1,13 @@
 package net.skaaj
 
 import net.skaaj.*
-import net.skaaj.entity.Record
-import net.skaaj.entity.Record.{GroupRecord, TaskRecord}
 import net.skaaj.entity.TaskStatus
+import net.skaaj.entity.Record.{GroupRecord, TaskRecord}
+import net.skaaj.entity.Node
+import net.skaaj.entity.NodeContent
 
 object Main extends App {
+  // Record model
   private val nodes = Seq(
     GroupRecord(0, None, "Project Alpha"),
     GroupRecord(3, None, "Project Sigma"),
@@ -18,13 +20,16 @@ object Main extends App {
     case task: TaskRecord => (Some(task.parentId), Seq(task.id))
   }.groupMapReduce(_(0))(_(1))(_ ++ _)
 
-  private val rootTitles =
-    edges
-      .get(None)
-      .map { ids =>
-        ids.flatMap(nodes.get).map(_.title)
-      }
+  println(nodes)
+  println(edges)
 
-  println(rootTitles)
-  println(nodes.get(2))
+  // Tree model
+  private val tree =
+    Node(1, "Root", NodeContent.Group(Seq(
+      Node(2, "Node 01", NodeContent.Task(TaskStatus.Open)),
+      Node(3, "Node 02", NodeContent.emptyGroup),
+      Node(4, "Node 03", NodeContent.Task(TaskStatus.Frozen))
+    )))
+
+  println(tree)
 }
