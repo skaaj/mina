@@ -28,8 +28,12 @@ object Main extends App {
     Node(1, "Root", NodeContent.Group(Seq(
       Node(2, "Node 01", NodeContent.Task(TaskStatus.Open)),
       Node(3, "Node 02", NodeContent.emptyGroup),
-      Node(4, "Node 03", NodeContent.Task(TaskStatus.Frozen))
+      Node(5, "Node 04", NodeContent.Group(Seq(
+        Node(6, "Node 05", NodeContent.Task(TaskStatus.InProgress))
+      ))),
+      Node(4, "Node 03", NodeContent.Task(TaskStatus.Frozen)),
     )))
 
   println(tree)
+  println(tree.walk(_.title))
 }
