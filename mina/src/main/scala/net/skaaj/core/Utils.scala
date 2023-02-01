@@ -1,11 +1,16 @@
 package net.skaaj.core
 
+import scala.util.chaining.*
+
 object Utils {
-  def time[R](block: => R): R = {
+  def time[R](block: => R): (Long, R) = {
     val t0 = System.nanoTime()
-    val result = block // call-by-name
+    val result = block
     val t1 = System.nanoTime()
-    println("Elapsed time: " + (t1 - t0) + "ns")
-    result
+    ((t1 - t0) / 1_000 , result)
+  }
+
+  def timeTap[R](f: ((Long, R)) => Any)(block: => R): R = {
+    time(block).tap(f)(1)
   }
 }
