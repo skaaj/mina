@@ -27,19 +27,40 @@ final class Tree(edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
       iter(startId, Seq.empty).reverse
   }
 
+  // 
+  def walkLazy[A](startId: Long)(f: Node => A): LazyList[A] = {
+    def iter(currentId: Long, collected: LazyList[A] = LazyList.empty): LazyList[A] = {
+      nodes.get(currentId).fold(LazyList.empty) { node =>
+        node.content match {
+          case _: NodeContent.Task =>
+            collected.appended(f(node))
+          case _: NodeContent.Group =>
+            edges.getOrElse(currentId, Seq.empty)
+              .foldLeft(collected.appended(f(node)))((acc, item) => iter(item, acc))
+        }
+      }
+    }
+
+    if (startId == RootId)
+      edges(RootId).foldLeft(LazyList.empty)((acc, id) => acc #::: iter(id))
+    else
+      iter(startId)
+  }
+
+  def nodesCount: Int = nodes.size
+
   override def toString: String = (edges, nodes).toString
 }
 
 object Tree {
   def apply(records: Seq[NodeRecord]): Tree = {
-    val edges =
-      records
+    new Tree(
+      edges = records
         .map(record => (record.parentId, Seq(record.id)))
-        .groupMapReduce(_(0))(_(1))(_ ++ _)
-    val nodes =
-      records
+        .groupMapReduce(_(0))(_(1))(_ ++ _),
+      nodes = records
         .map(record => (record.id, record.toNode))
         .toMap
-    new Tree(edges, nodes)
+    )
   }
 }
