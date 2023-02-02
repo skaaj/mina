@@ -11,12 +11,13 @@ import scala.util.Random
 object Main extends App {
   // Simulate database
   private val records = {
-    val taskCount = 8000
-    val groupCount = 2000
+    val taskCount = 500
+    val groupCount = 20
 
     val groups = (0 until groupCount)
       .map(i => GroupRecord(i, s"Group $i", RootId))
     
+
     val movedGroups = groups.map { group =>
       if(Random.nextFloat() < 0.8f) {
         val parentId: Option[Long] = Some(Random.between(0, groupCount))
@@ -29,7 +30,7 @@ object Main extends App {
     val tasks = (groupCount until (groupCount + taskCount))
       .map(i => TaskRecord(i, s"Task $i", None, TaskStatus.Open, Random.between(0, groupCount)))
     
-    movedGroups ++ tasks
+    Random.shuffle(movedGroups ++ tasks)
   }
 
   // App logic
@@ -51,4 +52,6 @@ object Main extends App {
     val collected = tree.walk(RootId)(getRepr)
     collected.find(_ == "Task 3000")
   }
+  timeTap(printTime)(tree.toString)
+  timeTap(printTime)(tree.toString)
 }

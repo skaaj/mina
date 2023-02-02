@@ -49,7 +49,49 @@ final class Tree(edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
 
   def nodesCount: Int = nodes.size
 
-  override def toString: String = (edges, nodes).toString
+  lazy val textDiagramRepr = {
+    def iter(currentId: Long, depth: Int, last: Boolean, collected: Seq[(String, Int, Boolean)]): Seq[(String, Int, Boolean)] = {
+      nodes.get(currentId).fold(Seq.empty) { node =>
+        node.content match {
+          case t: NodeContent.Task =>
+            (t.title, depth, last) +: collected
+          case g: NodeContent.Group =>
+            val groupEdges = edges.getOrElse(currentId, Seq.empty)
+            groupEdges
+              .zipWithIndex
+              .map({case (item, i) => (item, i == groupEdges.size - 1)})
+              .foldLeft((g.name, depth, last) +: collected)((acc, item) => iter(item(0), depth + 1, item(1), acc))
+        }
+      }
+    }
+
+    val rootEdges = edges.getOrElse(RootId, Seq.empty)
+    val flatRepr = rootEdges
+      .zipWithIndex
+      .map({case (item, i) => (item, i == rootEdges.size - 1)})
+      .foldLeft(Seq.empty[(String, Int, Boolean)]){(acc, item) =>
+        acc ++ iter(item(0), 1, item(1), Seq.empty).reverse
+      }
+
+    val indexOfLastRoot = flatRepr.lastIndexWhere {
+      case (_, 1, _) => true
+      case _ => false
+    }
+
+    val stylized = flatRepr.zipWithIndex.map {
+      case ((content, 1, isLast), i) =>
+        val symbol = if(isLast) "└─" else "├─"
+        s"$symbol $content"
+      case ((content, depth, isLast), i) =>
+        val symbol = if(isLast) "└─" else "├─"
+        if(i > indexOfLastRoot) "   " + ("│  " * (depth - 2)) + s"$symbol $content"
+        else ("│  " * (depth - 1)) + s"$symbol $content"
+    }
+    
+    "Root\n" + stylized.mkString("\n") + "\n"
+  }
+
+  override def toString: String = textDiagramRepr
 }
 
 object Tree {
@@ -64,3 +106,4 @@ object Tree {
     )
   }
 }
+
