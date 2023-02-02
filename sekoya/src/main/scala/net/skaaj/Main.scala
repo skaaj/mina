@@ -11,12 +11,11 @@ import scala.util.Random
 object Main extends App {
   // Simulate database
   private val records = {
-    val taskCount = 500
+    val taskCount = 100
     val groupCount = 20
 
     val groups = (0 until groupCount)
       .map(i => GroupRecord(i, s"Group $i", RootId))
-    
 
     val movedGroups = groups.map { group =>
       if(Random.nextFloat() < 0.8f) {
@@ -38,20 +37,6 @@ object Main extends App {
   private val printTime: ((Long, _)) => _ = {
     case (elapsed, _) => println(s"$elapsed us")
   }
-  private val getRepr: Node => String = {
-    node => node.content match {
-      case t: NodeContent.Task => t.title
-      case g: NodeContent.Group => g.name
-    }
-  }
-  timeTap(printTime){
-    val collected = tree.walkLazy(RootId)(getRepr)
-    collected.find(_ == "Task 3000")
-  }
-  timeTap(printTime){
-    val collected = tree.walk(RootId)(getRepr)
-    collected.find(_ == "Task 3000")
-  }
-  timeTap(printTime)(tree.toString)
-  timeTap(printTime)(tree.toString)
+  println(timeTap(printTime)(tree.toString))
 }
+

@@ -8,26 +8,29 @@ import net.skaaj.entity.NodeContent
 import scala.collection.mutable
 
 final class Tree(edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
-  def walk[A](startId: Long)(f: Node => A): Seq[A] = {
-    def iter(currentId: Long, collected: Seq[A]): Seq[A] = {
+  def walk[A](startId: Long)(f: (Node, Int) => A): Seq[A] = {
+    def iter(currentId: Long, depth: Int, collected: Seq[A]): Seq[A] = {
       nodes.get(currentId).fold(Seq.empty) { node =>
         node.content match {
           case _: NodeContent.Task =>
-            f(node) +: collected
+            f(node, depth) +: collected
           case _: NodeContent.Group =>
             edges.getOrElse(currentId, Seq.empty)
-              .foldLeft(f(node) +: collected)((acc, item) => iter(item, acc))
+              .foldLeft(f(node, depth) +: collected)((acc, item) => iter(item, depth + 1, acc))
         }
       }
     }
 
     if (startId == RootId)
-      edges(RootId).foldLeft(Seq.empty)(_ ++ iter(_, Seq.empty).reverse)
+      edges(RootId).foldLeft(Seq.empty)(_ ++ iter(_, 1, Seq.empty).reverse)
     else
-      iter(startId, Seq.empty).reverse
+      iter(startId, 1, Seq.empty).reverse
   }
 
-  // 
+  def walk[A](startId: Long)(f: Node => A): Seq[A] = {
+    walk(startId)((node, _) => f(node))
+  }
+
   def walkLazy[A](startId: Long)(f: Node => A): LazyList[A] = {
     def iter(currentId: Long, collected: LazyList[A] = LazyList.empty): LazyList[A] = {
       nodes.get(currentId).fold(LazyList.empty) { node =>
@@ -50,35 +53,27 @@ final class Tree(edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
   def nodesCount: Int = nodes.size
 
   lazy val textDiagramRepr = {
-    def iter(currentId: Long, depth: Int, last: Boolean, collected: Seq[(String, Int, Boolean)]): Seq[(String, Int, Boolean)] = {
-      nodes.get(currentId).fold(Seq.empty) { node =>
-        node.content match {
-          case t: NodeContent.Task =>
-            (t.title, depth, last) +: collected
-          case g: NodeContent.Group =>
-            val groupEdges = edges.getOrElse(currentId, Seq.empty)
-            groupEdges
-              .zipWithIndex
-              .map({case (item, i) => (item, i == groupEdges.size - 1)})
-              .foldLeft((g.name, depth, last) +: collected)((acc, item) => iter(item(0), depth + 1, item(1), acc))
-        }
-      }
+    val flatRepr = walk(RootId) { (node, depth) =>
+      node.content match
+        case t: NodeContent.Task => 
+          (t.title, depth, false)
+        case g: NodeContent.Group =>
+          (g.name, depth, true)
     }
-
-    val rootEdges = edges.getOrElse(RootId, Seq.empty)
-    val flatRepr = rootEdges
-      .zipWithIndex
-      .map({case (item, i) => (item, i == rootEdges.size - 1)})
-      .foldLeft(Seq.empty[(String, Int, Boolean)]){(acc, item) =>
-        acc ++ iter(item(0), 1, item(1), Seq.empty).reverse
-      }
 
     val indexOfLastRoot = flatRepr.lastIndexWhere {
-      case (_, 1, _) => true
-      case _ => false
+      case (_, depth, isGroup) => isGroup && depth == 1
     }
 
-    val stylized = flatRepr.zipWithIndex.map {
+    // How can we find out that an item is the last of its group from the trace ?
+    // -> when all elements until the next backtrack have a greater depth
+    val traceDepths = flatRepr.map { case (_, depth, _) => depth }
+    val flatReprEnriched = for {
+      ((content, depth, _), i) <- flatRepr.zipWithIndex
+      itemAtSameDepth = traceDepths.drop(i + 1).takeWhile(otherDepth => otherDepth >= depth)
+    } yield (content, depth, itemAtSameDepth.forall(_ > depth))
+
+    val stylized = flatReprEnriched.zipWithIndex.map {
       case ((content, 1, isLast), i) =>
         val symbol = if(isLast) "└─" else "├─"
         s"$symbol $content"
