@@ -11,13 +11,9 @@ final class Tree(edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
   def walk[A](startId: Long)(f: (Node, Int) => A): Seq[A] = {
     def iter(currentId: Long, depth: Int, collected: Seq[A]): Seq[A] = {
       nodes.get(currentId).fold(Seq.empty) { node =>
-        node.content match {
-          case _: NodeContent.Task =>
-            f(node, depth) +: collected
-          case _: NodeContent.Group =>
-            edges.getOrElse(currentId, Seq.empty)
-              .foldLeft(f(node, depth) +: collected)((acc, item) => iter(item, depth + 1, acc))
-        }
+        edges
+          .getOrElse(currentId, Seq.empty)
+          .foldLeft(f(node, depth) +: collected)((xs, x) => iter(x, depth + 1, xs))
       }
     }
 
@@ -34,13 +30,9 @@ final class Tree(edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
   def walkLazy[A](startId: Long)(f: Node => A): LazyList[A] = {
     def iter(currentId: Long, collected: LazyList[A] = LazyList.empty): LazyList[A] = {
       nodes.get(currentId).fold(LazyList.empty) { node =>
-        node.content match {
-          case _: NodeContent.Task =>
-            collected.appended(f(node))
-          case _: NodeContent.Group =>
-            edges.getOrElse(currentId, Seq.empty)
-              .foldLeft(collected.appended(f(node)))((acc, item) => iter(item, acc))
-        }
+        edges
+          .getOrElse(currentId, Seq.empty)
+          .foldLeft(collected.appended(f(node)))((acc, item) => iter(item, acc))
       }
     }
 
