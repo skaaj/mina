@@ -4,6 +4,6 @@ import scala.collection.mutable
 
 final case class Node (
   id: Long,
-  parentId: Long,
+  parentId: Option[Long],
   content: NodeContent
 )

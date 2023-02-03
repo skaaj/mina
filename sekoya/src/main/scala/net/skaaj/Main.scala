@@ -7,10 +7,11 @@ import net.skaaj.core.Tree
 import net.skaaj.core.Utils.*
 import net.skaaj.entity.NodeRecord
 import scala.util.Random
+import scala.util.chaining.*
 
 object Main extends App {
   // Simulate database
-  private val records = {
+  private val randomRecords = {
     val taskCount = 100
     val groupCount = 20
 
@@ -32,6 +33,18 @@ object Main extends App {
     Random.shuffle(movedGroups ++ tasks)
   }
 
+  private val records = {
+    Seq[NodeRecord](
+      GroupRecord(0, "Group 0", RootId),
+      TaskRecord(1, "Task 1", None, TaskStatus.Open, 0),
+      TaskRecord(2, "Task 2", None, TaskStatus.Open, 0),
+      GroupRecord(3, "Group 3", RootId),
+      GroupRecord(4, "Group 4", RootId),
+      TaskRecord(5, "Task 5", None, TaskStatus.Open, 4),
+      GroupRecord(6, "Group 6", 4),
+    )
+  }
+
   // App logic
   private val tree = Tree(records)
   private val printTime: ((Long, _)) => _ = {
@@ -39,4 +52,3 @@ object Main extends App {
   }
   println(timeTap(printTime)(tree.toString))
 }
-

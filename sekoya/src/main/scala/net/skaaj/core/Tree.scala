@@ -1,13 +1,13 @@
 package net.skaaj.core
 
+import scala.util.chaining.*
+import scala.collection.mutable
 import net.skaaj.core.Tree
 import net.skaaj.core.Constants.*
-import net.skaaj.entity.{GroupRecord, Node, NodeRecord, TaskRecord}
-import net.skaaj.entity.NodeContent
+import net.skaaj.entity.{Node, NodeContent, NodeRecord, TaskRecord, GroupRecord}
 
-import scala.collection.mutable
 
-final class Tree(edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
+final class Tree private (edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
   def walk[A](startId: Long)(f: (Node, Int) => A): Seq[A] = {
     def iter(currentId: Long, depth: Int, collected: Seq[A]): Seq[A] = {
       nodes.get(currentId).fold(Seq.empty) { node =>
@@ -16,11 +16,7 @@ final class Tree(edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
           .foldLeft(f(node, depth) +: collected)((xs, x) => iter(x, depth + 1, xs))
       }
     }
-
-    if (startId == RootId)
-      edges(RootId).foldLeft(Seq.empty)(_ ++ iter(_, 1, Seq.empty).reverse)
-    else
-      iter(startId, 1, Seq.empty).reverse
+    iter(startId, 0, Seq.empty).reverse
   }
 
   def walk[A](startId: Long)(f: Node => A): Seq[A] = {
@@ -28,18 +24,14 @@ final class Tree(edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
   }
 
   def walkLazy[A](startId: Long)(f: Node => A): LazyList[A] = {
-    def iter(currentId: Long, collected: LazyList[A] = LazyList.empty): LazyList[A] = {
+    def iter(currentId: Long, collected: LazyList[A]): LazyList[A] = {
       nodes.get(currentId).fold(LazyList.empty) { node =>
         edges
           .getOrElse(currentId, Seq.empty)
-          .foldLeft(collected.appended(f(node)))((acc, item) => iter(item, acc))
+          .foldLeft(collected #::: LazyList(f(node)))((xs, x) => iter(x, xs))
       }
     }
-
-    if (startId == RootId)
-      edges(RootId).foldLeft(LazyList.empty)((acc, id) => acc #::: iter(id))
-    else
-      iter(startId)
+    iter(startId, LazyList.empty)
   }
 
   def nodesCount: Int = nodes.size
@@ -65,7 +57,10 @@ final class Tree(edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
       itemAtSameDepth = traceDepths.drop(i + 1).takeWhile(otherDepth => otherDepth >= depth)
     } yield (content, depth, itemAtSameDepth.forall(_ > depth))
 
+    // FIXME: indexOfLastRoot should be generalized to every groups
     val stylized = flatReprEnriched.zipWithIndex.map {
+      case ((content, 0, _), _) =>
+        content
       case ((content, 1, isLast), i) =>
         val symbol = if(isLast) "└─" else "├─"
         s"$symbol $content"
@@ -75,7 +70,7 @@ final class Tree(edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
         else ("│  " * (depth - 1)) + s"$symbol $content"
     }
     
-    "Root\n" + stylized.mkString("\n") + "\n"
+    stylized.mkString("\n") + "\n"
   }
 
   override def toString: String = textDiagramRepr
@@ -89,8 +84,8 @@ object Tree {
         .groupMapReduce(_(0))(_(1))(_ ++ _),
       nodes = records
         .map(record => (record.id, record.toNode))
+        .prepended((RootId, Node(RootId, None, NodeContent.Group("Root"))))
         .toMap
     )
   }
 }
-

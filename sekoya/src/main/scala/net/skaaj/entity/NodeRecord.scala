@@ -6,9 +6,9 @@ sealed trait NodeRecord {
 
   def toNode: Node = this match
     case GroupRecord(id, name, parentId) =>
-      Node(id, parentId, NodeContent.Group(name))
+      Node(id, Some(parentId), NodeContent.Group(name))
     case TaskRecord(id, title, description, status, parentId) =>
-      Node(id, parentId, NodeContent.Task(title, description, status))
+      Node(id, Some(parentId), NodeContent.Task(title, description, status))
 }
 
 final case class GroupRecord(
@@ -25,9 +25,13 @@ final case class TaskRecord(
 ) extends NodeRecord
 
 object NodeRecord {
-  def fromNode(node: Node): NodeRecord = node.content match
-    case NodeContent.Task(title, description, status) =>
-      TaskRecord(node.id, title, description, status, node.parentId)
-    case NodeContent.Group(name) =>
-      GroupRecord(node.id, name, node.parentId)
+  def fromNode(node: Node): Option[NodeRecord] = {
+    node.parentId.map { parentId =>
+      node.content match
+      case NodeContent.Task(title, description, status) =>
+        TaskRecord(node.id, title, description, status, parentId)
+      case NodeContent.Group(name) =>
+        GroupRecord(node.id, name, parentId)
+    }
+  }
 }
