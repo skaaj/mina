@@ -110,7 +110,10 @@ final class Tree private (edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
 }
 
 object Tree {
-  def apply(records: Seq[NodeRecord]): Tree = {
+  def apply(records: NodeRecord*): Tree =
+    fromSeq(records)
+
+  def fromSeq(records: Seq[NodeRecord]): Tree = {
     new Tree(
       edges = records
         .map(record => (record.parentId, Seq(record.id)))
