@@ -45,6 +45,6 @@ object Main extends App {
     )
   }
 
-  val tree = Tree.fromSeq(records)
+  val tree = Tree.fromSeq(randomRecords)
   println(tree)
 }

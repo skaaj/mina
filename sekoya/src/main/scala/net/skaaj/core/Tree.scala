@@ -72,14 +72,8 @@ final class Tree private (edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
   lazy val textDiagramRepr = {
     val flatRepr = collectFrom(RootId) { (node, depth) =>
       node.content match
-        case t: NodeContent.Task => 
-          (t.title, depth, false)
-        case g: NodeContent.Group =>
-          (g.name, depth, true)
-    }
-
-    val indexOfLastRoot = flatRepr.lastIndexWhere {
-      case (_, depth, isGroup) => isGroup && depth == 1
+        case t: NodeContent.Task => (t.title, depth, false)
+        case g: NodeContent.Group => (g.name, depth, true)
     }
 
     // How can we find out that an item is the last of its group from the trace ?
@@ -87,23 +81,28 @@ final class Tree private (edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
     val traceDepths = flatRepr.map { case (_, depth, _) => depth }
     val flatReprEnriched = for {
       ((content, depth, _), i) <- flatRepr.zipWithIndex
-      itemAtSameDepth = traceDepths.drop(i + 1).takeWhile(otherDepth => otherDepth >= depth)
-    } yield (content, depth, itemAtSameDepth.forall(_ > depth))
+      itemsAtSameDepth = traceDepths.drop(i + 1).takeWhile(otherDepth => otherDepth >= depth)
+    } yield (content, depth, itemsAtSameDepth.forall(_ > depth))
 
-    // FIXME: indexOfLastRoot should be generalized to every groups
+    val indentMasks = (for {
+      ((_, depth, isLast), i) <- flatReprEnriched.zipWithIndex if isLast && depth > 0
+      itemsAtSameDepth = traceDepths.drop(i + 1).takeWhile(otherDepth => otherDepth >= depth)
+      maskPair <- itemsAtSameDepth.zipWithIndex.map { case (_, j) => (i + 1 + j, Seq(depth)) }
+    } yield maskPair).groupMapReduce(_(0))(_(1))(_ ++ _)
+
     val stylized = flatReprEnriched.zipWithIndex.map {
       case ((content, 0, _), _) =>
         content
-      case ((content, 1, isLast), i) =>
-        val symbol = if(isLast) "└─" else "├─"
-        s"$symbol $content"
       case ((content, depth, isLast), i) =>
-        val symbol = if(isLast) "└─" else "├─"
-        if(i > indexOfLastRoot) "   " + ("│  " * (depth - 2)) + s"$symbol $content"
-        else ("│  " * (depth - 1)) + s"$symbol $content"
+        val symbol = if(isLast) "└─ " else "├─ "
+        val indentation = (1 until depth).map(indent =>
+          val mask = indentMasks.getOrElse(i, Seq.empty)
+          if(mask.contains(indent)) "   " else "│  "
+        ).mkString
+        s"$indentation$symbol$content"
     }
     
-    stylized.mkString("\n") + "\n"
+    stylized.mkString(start="", sep="\n", end="\n")
   }
 
   override def toString: String = textDiagramRepr
