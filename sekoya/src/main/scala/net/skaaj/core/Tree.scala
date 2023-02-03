@@ -8,20 +8,41 @@ import net.skaaj.entity.{Node, NodeContent, NodeRecord, TaskRecord, GroupRecord}
 
 
 final class Tree private (edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
-  def walk[A](startId: Long)(f: (Node, Int) => A): Seq[A] = {
+  def nodesCount: Int = nodes.size
+
+  def collectFrom[A](startId: Long)(pf: PartialFunction[(Node, Int), A]): Seq[A] = {
     def iter(currentId: Long, depth: Int, collected: Seq[A]): Seq[A] = {
       nodes.get(currentId).fold(Seq.empty) { node =>
         edges
           .getOrElse(currentId, Seq.empty)
-          .foldLeft(f(node, depth) +: collected)((xs, x) => iter(x, depth + 1, xs))
+          .foldLeft {
+            if(pf.isDefinedAt((node, depth)))
+              pf(node, depth) +: collected
+            else
+              collected
+          } ((xs, x) => iter(x, depth + 1, xs))
       }
     }
     iter(startId, 0, Seq.empty).reverse
   }
 
-  def walk[A](startId: Long)(f: Node => A): Seq[A] = {
-    walk(startId)((node, _) => f(node))
-  }
+  def collect[A](pf: PartialFunction[(Node, Int), A]): Seq[A] =
+    collectFrom(RootId)(pf)
+
+  def mapTrace[A](f: (Node, Int) => A): Seq[A] =
+    collect { case (node, depth) => f(node, depth) }
+
+  def map[A](f: Node => A): Seq[A] =
+    mapTrace((n, _) => f(n))
+
+  def filterTrace(p: (Node, Int) => Boolean): Seq[(Node, Int)] =
+    collect { case (node, depth) if p(node, depth) => (node, depth) }
+
+  def filter(p: Node => Boolean): Seq[Node] =
+    collect { case (node, _) if p(node) => node }
+
+  def find(p: Node => Boolean): Option[Node] =
+    filter(p).headOption
 
   def walkLazy[A](startId: Long)(f: Node => A): LazyList[A] = {
     def iter(currentId: Long, collected: LazyList[A]): LazyList[A] = {
@@ -34,10 +55,22 @@ final class Tree private (edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
     iter(startId, LazyList.empty)
   }
 
-  def nodesCount: Int = nodes.size
+  def move(nodeId: Long, targetId: Long): Option[Tree] = {
+    for {
+      node <- nodes.get(nodeId)
+      parentId <- node.parentId
+      parentChildren <- edges.get(parentId)
+      targetChildren <- edges.get(targetId)
+      newEdges = edges
+        .updated(targetId, targetChildren.appended(nodeId))
+        .updated(parentId, parentChildren.filterNot(_ == nodeId))
+      newNodes = nodes
+        .updated(nodeId, node.copy(parentId = Some(targetId)))
+    } yield new Tree(newEdges, newNodes)
+  }
 
   lazy val textDiagramRepr = {
-    val flatRepr = walk(RootId) { (node, depth) =>
+    val flatRepr = collectFrom(RootId) { (node, depth) =>
       node.content match
         case t: NodeContent.Task => 
           (t.title, depth, false)

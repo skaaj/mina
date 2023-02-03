@@ -45,10 +45,6 @@ object Main extends App {
     )
   }
 
-  // App logic
-  private val tree = Tree(records)
-  private val printTime: ((Long, _)) => _ = {
-    case (elapsed, _) => println(s"$elapsed us")
-  }
-  println(timeTap(printTime)(tree.toString))
+  val tree = Tree(records)
+  println(tree)
 }
