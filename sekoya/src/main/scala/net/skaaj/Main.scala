@@ -20,7 +20,7 @@ object Main extends App {
 
     val movedGroups = groups.map { group =>
       if(Random.nextFloat() < 0.8f) {
-        val parentId: Option[Long] = Some(Random.between(0, groupCount))
+        val parentId = Option(Random.between(0, groupCount))
         group.copy(parentId = parentId.filterNot(_ == group.id).getOrElse(RootId))
       } else {
         group
@@ -45,6 +45,6 @@ object Main extends App {
     )
   }
 
-  val tree = Tree.fromSeq(randomRecords)
+  val tree = Tree.fromSeq(records)
   println(tree)
 }

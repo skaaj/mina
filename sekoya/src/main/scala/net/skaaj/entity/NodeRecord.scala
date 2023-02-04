@@ -1,8 +1,8 @@
 package net.skaaj.entity
 
 sealed trait NodeRecord {
-  def id: Long
-  def parentId: Long
+  def id: Int
+  def parentId: Int
 
   def toNode: Node = this match
     case GroupRecord(id, name, parentId) =>
@@ -12,16 +12,17 @@ sealed trait NodeRecord {
 }
 
 final case class GroupRecord(
-  id: Long,
+  id: Int,
   name: String,
-  parentId: Long
+  parentId: Int
 ) extends NodeRecord
 
 final case class TaskRecord(
-  id: Long, title: String,
+  id: Int,
+  title: String,
   description: Option[String],
   status: TaskStatus,
-  parentId: Long
+  parentId: Int
 ) extends NodeRecord
 
 object NodeRecord {

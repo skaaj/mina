@@ -7,11 +7,11 @@ import net.skaaj.core.Constants.*
 import net.skaaj.entity.{Node, NodeContent, NodeRecord, TaskRecord, GroupRecord}
 
 
-final class Tree private (edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
+final class Tree private (edges: Map[Int, Seq[Int]], nodes: Map[Int, Node]) {
   def nodesCount: Int = nodes.size
 
-  def collectFrom[A](startId: Long)(pf: PartialFunction[(Node, Int), A]): Seq[A] = {
-    def iter(currentId: Long, depth: Int, collected: Seq[A]): Seq[A] = {
+  def collectFrom[A](startId: Int)(pf: PartialFunction[(Node, Int), A]): Seq[A] = {
+    def iter(currentId: Int, depth: Int, collected: Seq[A]): Seq[A] = {
       nodes.get(currentId).fold(Seq.empty) { node =>
         edges
           .getOrElse(currentId, Seq.empty)
@@ -44,8 +44,8 @@ final class Tree private (edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
   def find(p: Node => Boolean): Option[Node] =
     filter(p).headOption
 
-  def walkLazy[A](startId: Long)(f: Node => A): LazyList[A] = {
-    def iter(currentId: Long, collected: LazyList[A]): LazyList[A] = {
+  def walkLazy[A](startId: Int)(f: Node => A): LazyList[A] = {
+    def iter(currentId: Int, collected: LazyList[A]): LazyList[A] = {
       nodes.get(currentId).fold(LazyList.empty) { node =>
         edges
           .getOrElse(currentId, Seq.empty)
@@ -55,7 +55,7 @@ final class Tree private (edges: Map[Long, Seq[Long]], nodes: Map[Long, Node]) {
     iter(startId, LazyList.empty)
   }
 
-  def move(nodeId: Long, targetId: Long): Option[Tree] = {
+  def move(nodeId: Int, targetId: Int): Option[Tree] = {
     for {
       node <- nodes.get(nodeId)
       parentId <- node.parentId

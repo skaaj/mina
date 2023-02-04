@@ -3,7 +3,7 @@ package net.skaaj.entity
 import scala.collection.mutable
 
 final case class Node (
-  id: Long,
-  parentId: Option[Long],
+  id: Int,
+  parentId: Option[Int],
   content: NodeContent
 )
