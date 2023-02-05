@@ -7,4 +7,5 @@ lazy val root = (project in file("."))
     name := "sekoya"
   )
 
+libraryDependencies += "org.json4s" % "json4s-native_3" % "4.0.6"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.15" % "test"

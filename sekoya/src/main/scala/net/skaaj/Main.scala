@@ -46,5 +46,6 @@ object Main extends App {
   }
 
   val tree = Tree.fromSeq(records)
+  Tree.saveToResources(tree, "foobar.json")
   println(tree)
 }

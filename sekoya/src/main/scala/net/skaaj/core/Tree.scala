@@ -1,14 +1,25 @@
 package net.skaaj.core
 
+import java.io.File
+import java.io.BufferedWriter
+import java.io.FileWriter
+import scala.io.Source
+import scala.util.Try
 import scala.util.chaining.*
 import scala.collection.mutable
+import org.json4s.native.Serialization
+import org.json4s.native.Serialization.write
+import org.json4s.Formats
+import org.json4s.DefaultFormats
+import org.json4s.NoTypeHints
 import net.skaaj.core.Tree
 import net.skaaj.core.Constants.*
 import net.skaaj.entity.{Node, NodeContent, NodeRecord, TaskRecord, GroupRecord}
-
+import net.skaaj.entity.TaskStatus
 
 final class Tree private (edges: Map[Int, Seq[Int]], nodes: Map[Int, Node]) {
-  def nodesCount: Int = nodes.size
+  def getNodesCount: Int = nodes.size
+  def getNodes: Seq[Node] = nodes.values.toSeq
 
   def collectFrom[A](startId: Int)(pf: PartialFunction[(Node, Int), A]): Seq[A] = {
     def iter(currentId: Int, depth: Int, collected: Seq[A]): Seq[A] = {
@@ -111,6 +122,17 @@ final class Tree private (edges: Map[Int, Seq[Int]], nodes: Map[Int, Node]) {
 object Tree {
   def apply(records: NodeRecord*): Tree =
     fromSeq(records)
+
+  def saveToResources(tree: Tree, path: String): Try[Unit] = Try {
+    // FIXME:
+    // - use circe instead
+    // - find the resources path
+    implicit val formats: Formats = DefaultFormats
+    val file = new File(path)
+    val bw = new BufferedWriter(new FileWriter(file))
+    bw.write(write(tree.getNodes.map(n => NodeRecord.fromNode(n)).flatten))
+    bw.close()
+  }
 
   def fromSeq(records: Seq[NodeRecord]): Tree = {
     new Tree(
